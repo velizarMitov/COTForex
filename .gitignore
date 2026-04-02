@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+Scripts/
+
+# IDEs
+.idea/
+*.iws
+
+# Streamlit
+.streamlit/
+
