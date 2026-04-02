@@ -52,6 +52,8 @@ _CURRENCY_MARKETS: Dict[str, str] = {
     "USD DOLLAR INDEX": "USD INDEX",
     "DXY": "USD INDEX",
     "USDX": "USD INDEX",
+    "U.S. DOLLAR INDEX": "USD INDEX",
+    "U.S. DOLLAR INDEX - ICE FUTURES U.S.": "USD INDEX",
 }
 
 
