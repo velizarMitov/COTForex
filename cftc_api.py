@@ -87,7 +87,9 @@ def _fetch_rows(contract_market_name: str) -> List[dict]:
         "$select": (
             "report_date_as_yyyy_mm_dd,"
             "lev_money_positions_long,"
-            "lev_money_positions_short"
+            "lev_money_positions_short,"
+            "pct_of_oi_lev_money_long,"
+            "pct_of_oi_lev_money_short"
         ),
         "$where": f"contract_market_name = '{contract_market_name}'",
         "$order": "report_date_as_yyyy_mm_dd asc",
@@ -122,11 +124,36 @@ def get_cot_data(currency_name: str) -> pd.DataFrame:
     short_col = pd.to_numeric(df["lev_money_positions_short"], errors="coerce")
     df["Net Position"] = long_col - short_col
 
+    # Open Interest % metrics
+    long_pct_col = pd.to_numeric(df.get("pct_of_oi_lev_money_long"), errors="coerce").fillna(0)
+    short_pct_col = pd.to_numeric(df.get("pct_of_oi_lev_money_short"), errors="coerce").fillna(0)
+    df["Net_Pct_of_OI"] = long_pct_col - short_pct_col
+
     result = (
-        df[["Date", "Net Position"]]
+        df[["Date", "Net Position", "Net_Pct_of_OI"]]
         .dropna(subset=["Date", "Net Position"])
         .sort_values("Date")
         .reset_index(drop=True)
     )
+    
+    # Calculate Weekly Change and % Change safely
+    prev_pos = result["Net Position"].shift(1)
+    result["Net Position Change"] = result["Net Position"] - prev_pos
+    
+    # Use abs() on the denominator to preserve shift direction correctly if it crosses 0 or is negative
+    result["Net Position % Change"] = (result["Net Position Change"] / prev_pos.abs()) * 100
+    
+    # Handle possible division by zero infinity and NaNs explicitly
+    result["Net Position % Change"] = result["Net Position % Change"].replace([float('inf'), float('-inf')], 0).fillna(0)
+    result["Net Position Change"] = result["Net Position Change"].fillna(0)
+
+    # Calculate 52-Week Percentile
+    roll_min = result["Net Position"].rolling(window=52, min_periods=1).min()
+    roll_max = result["Net Position"].rolling(window=52, min_periods=1).max()
+    
+    # Safely calculate percentile
+    result["52-Week Percentile"] = ((result["Net Position"] - roll_min) / (roll_max - roll_min)) * 100
+    result["52-Week Percentile"] = result["52-Week Percentile"].fillna(50) # Default to neutral if max == min
+
     return result
 

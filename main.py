@@ -124,9 +124,11 @@ def plot_cot_with_dxy(cot_name: str, num_bars: int = 1000, height: int = 900):
     if all_dates:
         fig.update_xaxes(range=[min(all_dates), max(all_dates)])
 
-    return fig
+    # Return the dataframes as well so Streamlit can build momentum metrics
+    return fig, df_mt5, df_cot, df_dxy_cot
 
 if __name__ == "__main__":
-    fig = plot_cot_with_dxy('EURO FX')
-    if fig:
+    res = plot_cot_with_dxy('EURO FX')
+    if res:
+        fig, *_ = res
         fig.show()
