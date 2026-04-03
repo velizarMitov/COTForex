@@ -7,7 +7,9 @@ endpoint and computes net speculative positioning for leveraged funds.
 from __future__ import annotations
 
 import json
+import time
 from typing import Dict, List
+from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import urlopen
 
@@ -97,8 +99,24 @@ def _fetch_rows(contract_market_name: str) -> List[dict]:
     }
     url = f"{_BASE_URL}?{urlencode(params)}"
 
-    with urlopen(url, timeout=30) as response:
-        return json.loads(response.read().decode("utf-8"))
+    retries = 3
+    for attempt in range(retries):
+        try:
+            with urlopen(url, timeout=30) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except HTTPError as exc:
+            # Retry transient upstream/server errors.
+            if exc.code in {429, 500, 502, 503, 504} and attempt < retries - 1:
+                time.sleep(1.5 * (attempt + 1))
+                continue
+            raise
+        except URLError:
+            if attempt < retries - 1:
+                time.sleep(1.5 * (attempt + 1))
+                continue
+            raise
+
+    return []
 
 
 def fetch_cftc_data(symbol: str) -> pd.DataFrame:
@@ -165,10 +183,27 @@ def calculate_extremes(df: pd.DataFrame) -> pd.DataFrame:
 
 def get_cot_data(currency_name: str) -> pd.DataFrame:
     """Wrapper to maintain compatibility."""
-    df = fetch_cftc_data(currency_name)
+    empty = pd.DataFrame(
+        columns=[
+            "Date",
+            "Net Position",
+            "Net_Pct_of_OI",
+            "Net Position Change",
+            "Net Position % Change",
+            "52-Week Percentile",
+        ]
+    )
+
+    try:
+        df = fetch_cftc_data(currency_name)
+    except Exception as exc:
+        # Keep Streamlit app alive when CFTC endpoint is temporarily unstable.
+        print(f"CFTC fetch failed for '{currency_name}': {exc}")
+        return empty
+
     if df.empty:
-        return pd.DataFrame(columns=["Date", "Net Position", "Net_Pct_of_OI", "Net Position Change", "Net Position % Change", "52-Week Percentile"])
-    
+        return empty
+
     df = calculate_open_interest(df)
     df = calculate_momentum_metrics(df)
     df = calculate_extremes(df)
