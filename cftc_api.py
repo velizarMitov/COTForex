@@ -101,59 +101,75 @@ def _fetch_rows(contract_market_name: str) -> List[dict]:
         return json.loads(response.read().decode("utf-8"))
 
 
-def get_cot_data(currency_name: str) -> pd.DataFrame:
-    """Return historical net speculative positions for a currency market.
-
-    Net Position = Leveraged Funds Long - Leveraged Funds Short.
-
-    Args:
-        currency_name: Currency/alias like "EURO FX", "GBP", "USD/JPY".
-
-    Returns:
-        pandas.DataFrame with columns: "Date", "Net Position".
-    """
-    market_name = _normalize_currency_name(currency_name)
+def fetch_cftc_data(symbol: str) -> pd.DataFrame:
+    """Only handles the API request and returns a raw DataFrame with basic Date and Net Position."""
+    market_name = _normalize_currency_name(symbol)
     rows = _fetch_rows(market_name)
 
     if not rows:
-        return pd.DataFrame(columns=["Date", "Net Position"])
+        return pd.DataFrame()
 
     df = pd.DataFrame(rows)
     df["Date"] = pd.to_datetime(df["report_date_as_yyyy_mm_dd"], errors="coerce")
-    long_col = pd.to_numeric(df["lev_money_positions_long"], errors="coerce")
-    short_col = pd.to_numeric(df["lev_money_positions_short"], errors="coerce")
+    long_col = pd.to_numeric(df.get("lev_money_positions_long"), errors="coerce").fillna(0)
+    short_col = pd.to_numeric(df.get("lev_money_positions_short"), errors="coerce").fillna(0)
     df["Net Position"] = long_col - short_col
 
-    # Open Interest % metrics
+    result = df.dropna(subset=["Date", "Net Position"]).sort_values("Date").reset_index(drop=True)
+    
+    # Store other columns just in case
+    for col in ["pct_of_oi_lev_money_long", "pct_of_oi_lev_money_short"]:
+        if col in df.columns:
+            result[col] = df[col]
+            
+    return result
+
+
+def calculate_open_interest(df: pd.DataFrame) -> pd.DataFrame:
+    """Calculates the Net_Pct_of_OI."""
+    if df.empty:
+        return df
     long_pct_col = pd.to_numeric(df.get("pct_of_oi_lev_money_long"), errors="coerce").fillna(0)
     short_pct_col = pd.to_numeric(df.get("pct_of_oi_lev_money_short"), errors="coerce").fillna(0)
     df["Net_Pct_of_OI"] = long_pct_col - short_pct_col
+    return df
 
-    result = (
-        df[["Date", "Net Position", "Net_Pct_of_OI"]]
-        .dropna(subset=["Date", "Net Position"])
-        .sort_values("Date")
-        .reset_index(drop=True)
-    )
-    
-    # Calculate Weekly Change and % Change safely
-    prev_pos = result["Net Position"].shift(1)
-    result["Net Position Change"] = result["Net Position"] - prev_pos
-    
-    # Use abs() on the denominator to preserve shift direction correctly if it crosses 0 or is negative
-    result["Net Position % Change"] = (result["Net Position Change"] / prev_pos.abs()) * 100
-    
-    # Handle possible division by zero infinity and NaNs explicitly
-    result["Net Position % Change"] = result["Net Position % Change"].replace([float('inf'), float('-inf')], 0).fillna(0)
-    result["Net Position Change"] = result["Net Position Change"].fillna(0)
 
-    # Calculate 52-Week Percentile
-    roll_min = result["Net Position"].rolling(window=52, min_periods=1).min()
-    roll_max = result["Net Position"].rolling(window=52, min_periods=1).max()
+def calculate_momentum_metrics(df: pd.DataFrame) -> pd.DataFrame:
+    """Calculates the week-over-week changes (absolute and %)."""
+    if df.empty or "Net Position" not in df.columns:
+        return df
     
-    # Safely calculate percentile
-    result["52-Week Percentile"] = ((result["Net Position"] - roll_min) / (roll_max - roll_min)) * 100
-    result["52-Week Percentile"] = result["52-Week Percentile"].fillna(50) # Default to neutral if max == min
+    prev_pos = df["Net Position"].shift(1)
+    df["Net Position Change"] = df["Net Position"] - prev_pos
+    df["Net Position Change"] = df["Net Position Change"].fillna(0)
 
-    return result
+    # Use abs() on the denominator
+    pct_change = (df["Net Position Change"] / prev_pos.abs()) * 100
+    df["Net Position % Change"] = pct_change.replace([float('inf'), float('-inf')], 0).fillna(0)
+    return df
 
+
+def calculate_extremes(df: pd.DataFrame) -> pd.DataFrame:
+    """Calculates the 52-week percentiles based on Net Position."""
+    if df.empty or "Net Position" not in df.columns:
+        return df
+        
+    roll_min = df["Net Position"].rolling(window=52, min_periods=1).min()
+    roll_max = df["Net Position"].rolling(window=52, min_periods=1).max()
+    
+    percentile = ((df["Net Position"] - roll_min) / (roll_max - roll_min)) * 100
+    df["52-Week Percentile"] = percentile.fillna(50)
+    return df
+
+
+def get_cot_data(currency_name: str) -> pd.DataFrame:
+    """Wrapper to maintain compatibility."""
+    df = fetch_cftc_data(currency_name)
+    if df.empty:
+        return pd.DataFrame(columns=["Date", "Net Position", "Net_Pct_of_OI", "Net Position Change", "Net Position % Change", "52-Week Percentile"])
+    
+    df = calculate_open_interest(df)
+    df = calculate_momentum_metrics(df)
+    df = calculate_extremes(df)
+    return df

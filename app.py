@@ -6,22 +6,11 @@ import plotly.graph_objects as go
 from main import plot_cot_with_dxy, COT_TO_MT5
 from cftc_api import get_cot_data
 
-# Define Streamlit page basic setup
-st.set_page_config(
-    page_title="COT & MT5 Forex Analysis",
-    layout="wide",
-    page_icon="📈"
-)
-
-# Navigation via sidebar
-page = st.sidebar.radio('Navigation', ['Main Dashboard', 'Extremes & Comparison', 'Open Interest Analysis'])
-st.sidebar.markdown("---")
-
 # Reverse the COT_TO_MT5 dict so we lookup COT names from MT5 symbols
 mt5_to_cot = {mt5_sym: cot_name for cot_name, mt5_sym in COT_TO_MT5.items()}
 mt5_options = list(mt5_to_cot.keys())
 
-if page == 'Main Dashboard':
+def render_main_dashboard():
     st.title("Forex COT vs Price Analysis")
     st.markdown("Compare MT5 Weekly Close Prices directly with specific currency COT **AND** the USD Index COT on a single timeline.")
 
@@ -115,7 +104,7 @@ if page == 'Main Dashboard':
         else:
             st.error("Failed to generate the chart. Please check terminal logs for details.")
 
-elif page == 'Extremes & Comparison':
+def render_extremes_comparison():
     st.title("Market Sentiment Extremes & Comparison")
     st.markdown("Compare 52-Week Percentiles across multiple selected Forex pairs and the USD Index.")
     
@@ -209,7 +198,7 @@ elif page == 'Extremes & Comparison':
             else:
                 st.info("No data returned for selected assets.")
 
-elif page == 'Open Interest Analysis':
+def render_open_interest_analysis():
     st.title("Open Interest Analysis")
     st.markdown("Analyze the net percentage of Open Interest (OI) held by leveraged speculative funds.")
     
@@ -254,6 +243,27 @@ elif page == 'Open Interest Analysis':
         else:
             st.error("Could not fetch Open Interest data for the selected asset.")
 
-st.sidebar.markdown("---")
-st.sidebar.info("Data sourced directly from **CFTC.gov** via Socrata API and local **MetaTrader 5** terminal.")
+def main():
+    # Define Streamlit page basic setup
+    st.set_page_config(
+        page_title="COT & MT5 Forex Analysis",
+        layout="wide",
+        page_icon="📈"
+    )
 
+    # Navigation via sidebar
+    page = st.sidebar.radio('Navigation', ['Main Dashboard', 'Extremes & Comparison', 'Open Interest Analysis'])
+    st.sidebar.markdown("---")
+
+    if page == 'Main Dashboard':
+        render_main_dashboard()
+    elif page == 'Extremes & Comparison':
+        render_extremes_comparison()
+    elif page == 'Open Interest Analysis':
+        render_open_interest_analysis()
+
+    st.sidebar.markdown("---")
+    st.sidebar.info("Data sourced directly from **CFTC.gov** via Socrata API and local **MetaTrader 5** terminal.")
+
+if __name__ == "__main__":
+    main()

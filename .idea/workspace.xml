@@ -4,7 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="225bd4d9-8006-4075-b18e-dda51b50b6bb" name="Changes" comment="Add Streamlit app for Forex COT vs Price analysis and update COT mappings" />
+    <list default="true" id="225bd4d9-8006-4075-b18e-dda51b50b6bb" name="Changes" comment="Enhance Streamlit app with new features for Forex COT analysis and Open Interest metrics">
+      <change beforePath="$PROJECT_DIR$/build_app.py" beforeDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -83,7 +85,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1775153588332</updated>
-      <workItem from="1775153589534" duration="3365000" />
+      <workItem from="1775153589534" duration="6706000" />
     </task>
     <task id="LOCAL-00001" summary="begin">
       <option name="closed" value="true" />
@@ -109,7 +111,31 @@
       <option name="project" value="LOCAL" />
       <updated>1775156856617</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="Update workspace configuration for Streamlit app and task management">
+      <option name="closed" value="true" />
+      <created>1775157036042</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1775157036042</updated>
+    </task>
+    <task id="LOCAL-00005" summary="Update workspace configuration for Streamlit app and task management">
+      <option name="closed" value="true" />
+      <created>1775157088456</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1775157088456</updated>
+    </task>
+    <task id="LOCAL-00006" summary="Enhance Streamlit app with new features for Forex COT analysis and Open Interest metrics">
+      <option name="closed" value="true" />
+      <created>1775160013955</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1775160013955</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -118,7 +144,9 @@
   <component name="VcsManagerConfiguration">
     <MESSAGE value="begin" />
     <MESSAGE value="Add Streamlit app for Forex COT vs Price analysis and update COT mappings" />
-    <option name="LAST_COMMIT_MESSAGE" value="Add Streamlit app for Forex COT vs Price analysis and update COT mappings" />
+    <MESSAGE value="Update workspace configuration for Streamlit app and task management" />
+    <MESSAGE value="Enhance Streamlit app with new features for Forex COT analysis and Open Interest metrics" />
+    <option name="LAST_COMMIT_MESSAGE" value="Enhance Streamlit app with new features for Forex COT analysis and Open Interest metrics" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/COTForex$main.coverage" NAME="main Coverage Results" MODIFIED="1775155130905" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />

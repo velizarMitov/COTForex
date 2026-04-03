@@ -3,7 +3,7 @@
 import MetaTrader5 as mt5
 import pandas as pd
 
-def init_mt5() -> bool:
+def init_mt5_connection() -> bool:
     """Initialize a connection to the MetaTrader 5 terminal."""
     if not mt5.initialize():
         print(f"MetaTrader5 initialization failed, error code={mt5.last_error()}")
@@ -14,7 +14,7 @@ def shutdown_mt5():
     """Shut down the MetaTrader 5 connection."""
     mt5.shutdown()
 
-def get_forex_data(symbol: str, timeframe: str = "W1", num_bars: int = 1000) -> pd.DataFrame:
+def fetch_forex_data(symbol: str, timeframe: str = "W1", num_bars: int = 1000) -> pd.DataFrame:
     """Fetch historical OHLC data from MetaTrader 5 and isolate the 'close' price.
 
     Args:
@@ -26,7 +26,7 @@ def get_forex_data(symbol: str, timeframe: str = "W1", num_bars: int = 1000) -> 
         A pandas DataFrame indexed by datetime containing the 'close' column.
         Returns an empty DataFrame if MT5 fails or no data is found.
     """
-    if not init_mt5():
+    if not init_mt5_connection():
         return pd.DataFrame()
 
     # Map readable timeframe inputs to MT5 internal constants
@@ -69,3 +69,6 @@ def get_forex_data(symbol: str, timeframe: str = "W1", num_bars: int = 1000) -> 
 
     return result
 
+def get_forex_data(symbol: str, timeframe: str = "W1", num_bars: int = 1000) -> pd.DataFrame:
+    """Wrapper function for backwards compatibility."""
+    return fetch_forex_data(symbol, timeframe, num_bars)
