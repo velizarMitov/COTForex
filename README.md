@@ -32,15 +32,19 @@ You must have:
 
 1. Clone this repository or move the source files into a dedicated workspace.
 2. Initialize your `.venv` virtual environment (or use your existing setup).
-3. Install the dependencies:
+3. Install core app dependencies (lightweight):
    ```powershell
    python -m pip install -r requirements.txt
    ```
-   *(Includes `pandas`, `MetaTrader5`, `plotly`, and `streamlit`)*
+   *(Includes `pandas`, `MetaTrader5`, `plotly`, and `streamlit`.)*
+4. Optional: install ML stack (PyTorch + TensorFlow) in a separate environment:
+   ```powershell
+   python -m pip install -r requirements-ml.txt
+   ```
 
 ---
 
-## 🖥\uFE0F Usage
+## 🖥️ Usage
 
 Ensure your **MetaTrader 5** terminal is running in the background.
 From your virtual environment inside the terminal, simply run:
@@ -62,7 +66,8 @@ A tab will automatically open in your default browser at `http://localhost:8501`
 * `app.py` — The Streamlit entry point; wraps the charts into the clean web UI elements.
 * `mt5_api.py` — Interactor class logic managing MetaTrader 5 fetching and normalization.
 * `cftc_api.py` — Socrata/CFTC API endpoints handler, parsing JSON records into pandas DataFrames.
-* `requirements.txt` — Package configurations.
+* `requirements.txt` — Core app dependencies only.
+* `requirements-ml.txt` — Optional ML dependencies (`torch`, `tensorflow`) on top of core dependencies.
 
 ---
 
