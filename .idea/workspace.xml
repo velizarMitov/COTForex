@@ -4,11 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="225bd4d9-8006-4075-b18e-dda51b50b6bb" name="Changes" comment="Enhance Streamlit app with new charting options for Forex COT and MT5 data analysis">
-      <change afterPath="$PROJECT_DIR$/requirements-ml.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/run_app_ml.bat" afterDir="false" />
+    <list default="true" id="225bd4d9-8006-4075-b18e-dda51b50b6bb" name="Changes" comment="Update README and add ML dependencies for Streamlit app">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/requirements-ml.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements-ml.txt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -94,7 +92,7 @@
       <updated>1775153588332</updated>
       <workItem from="1775153589534" duration="6706000" />
       <workItem from="1775195365409" duration="6248000" />
-      <workItem from="1775242366836" duration="552000" />
+      <workItem from="1775242366836" duration="1761000" />
     </task>
     <task id="LOCAL-00001" summary="begin">
       <option name="closed" value="true" />
@@ -160,7 +158,15 @@
       <option name="project" value="LOCAL" />
       <updated>1775238836746</updated>
     </task>
-    <option name="localTasksCounter" value="9" />
+    <task id="LOCAL-00009" summary="Update README and add ML dependencies for Streamlit app">
+      <option name="closed" value="true" />
+      <created>1775243158086</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1775243158086</updated>
+    </task>
+    <option name="localTasksCounter" value="10" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -173,7 +179,8 @@
     <MESSAGE value="Enhance Streamlit app with new features for Forex COT analysis and Open Interest metrics" />
     <MESSAGE value="Refactor Streamlit app structure and enhance CFTC data fetching for improved analysis" />
     <MESSAGE value="Enhance Streamlit app with new charting options for Forex COT and MT5 data analysis" />
-    <option name="LAST_COMMIT_MESSAGE" value="Enhance Streamlit app with new charting options for Forex COT and MT5 data analysis" />
+    <MESSAGE value="Update README and add ML dependencies for Streamlit app" />
+    <option name="LAST_COMMIT_MESSAGE" value="Update README and add ML dependencies for Streamlit app" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/COTForex$main.coverage" NAME="main Coverage Results" MODIFIED="1775155130905" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />

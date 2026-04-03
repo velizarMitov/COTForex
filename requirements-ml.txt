@@ -1,0 +1,7 @@
+# Base app dependencies
+-r requirements.txt
+
+# PyTorch (CUDA 12.6 build for Windows)
+--extra-index-url https://download.pytorch.org/whl/cu126
+torch==2.11.0+cu126 ; platform_system == "Windows"
+
