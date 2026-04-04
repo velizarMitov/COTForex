@@ -4,9 +4,12 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="225bd4d9-8006-4075-b18e-dda51b50b6bb" name="Changes" comment="Update README and add ML dependencies for Streamlit app">
+    <list default="true" id="225bd4d9-8006-4075-b18e-dda51b50b6bb" name="Changes" comment="Update .gitignore to include new virtual environment directories for ML setup">
+      <change afterPath="$PROJECT_DIR$/charts.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/data_processor.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ui_components.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/requirements-ml.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements-ml.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app.py" beforeDir="false" afterPath="$PROJECT_DIR$/app.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -23,8 +26,8 @@
   </component>
   <component name="CopilotUserSelectedModel">
     <selectedModels>
-      <entry key="chat-panel" value="GPT-5.3-Codex" />
-      <entry key="agent-panel" value="GPT-5.3-Codex" />
+      <entry key="chat-panel" value="Gemini 3.1 Pro" />
+      <entry key="agent-panel" value="Gemini 3.1 Pro" />
     </selectedModels>
   </component>
   <component name="Git.Settings">
@@ -73,6 +76,11 @@
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
     "vue.rearranger.settings.migration": "true"
+  },
+  "keyToStringList": {
+    "ChangesTree.GroupingKeys": [
+      "repository"
+    ]
   }
 }]]></component>
   <component name="SharedIndexes">
@@ -92,7 +100,7 @@
       <updated>1775153588332</updated>
       <workItem from="1775153589534" duration="6706000" />
       <workItem from="1775195365409" duration="6248000" />
-      <workItem from="1775242366836" duration="1761000" />
+      <workItem from="1775242366836" duration="6632000" />
     </task>
     <task id="LOCAL-00001" summary="begin">
       <option name="closed" value="true" />
@@ -166,7 +174,31 @@
       <option name="project" value="LOCAL" />
       <updated>1775243158086</updated>
     </task>
-    <option name="localTasksCounter" value="10" />
+    <task id="LOCAL-00010" summary="Add ML dependencies for Streamlit app and update workspace configuration">
+      <option name="closed" value="true" />
+      <created>1775244199022</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1775244199022</updated>
+    </task>
+    <task id="LOCAL-00011" summary="Update .gitignore to include new virtual environment directories for ML setup">
+      <option name="closed" value="true" />
+      <created>1775244580155</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1775244580155</updated>
+    </task>
+    <task id="LOCAL-00012" summary="Update .gitignore to include new virtual environment directories for ML setup">
+      <option name="closed" value="true" />
+      <created>1775244611748</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1775244611748</updated>
+    </task>
+    <option name="localTasksCounter" value="13" />
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
@@ -180,7 +212,9 @@
     <MESSAGE value="Refactor Streamlit app structure and enhance CFTC data fetching for improved analysis" />
     <MESSAGE value="Enhance Streamlit app with new charting options for Forex COT and MT5 data analysis" />
     <MESSAGE value="Update README and add ML dependencies for Streamlit app" />
-    <option name="LAST_COMMIT_MESSAGE" value="Update README and add ML dependencies for Streamlit app" />
+    <MESSAGE value="Add ML dependencies for Streamlit app and update workspace configuration" />
+    <MESSAGE value="Update .gitignore to include new virtual environment directories for ML setup" />
+    <option name="LAST_COMMIT_MESSAGE" value="Update .gitignore to include new virtual environment directories for ML setup" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/COTForex$main.coverage" NAME="main Coverage Results" MODIFIED="1775155130905" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
