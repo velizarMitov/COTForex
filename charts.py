@@ -79,9 +79,6 @@ def build_overlay_chart(df_merged: pd.DataFrame, selected_pair: str, selected_co
     fig.update_yaxes(title_text="Price", secondary_y=False)
     fig.update_yaxes(title_text="Net Open Interest (%)", secondary_y=True)
 
-    if selected_pair in ["USDJPY", "USDCHF", "USDCAD"]:
-        fig.update_yaxes(autorange="reversed", secondary_y=False)
-        fig.update_yaxes(title_text="Price (Inverted Axis)", secondary_y=False)
 
     return fig
 
@@ -181,9 +178,6 @@ def build_stacked_chart(df_merged: pd.DataFrame, selected_pair: str, selected_co
     fig.update_yaxes(title_text="Pair Net OI %", row=2, col=1)
     fig.update_yaxes(title_text="USD Index Net OI %", row=3, col=1)
 
-    if selected_pair in ["USDJPY", "USDCHF", "USDCAD"]:
-        fig.update_yaxes(autorange="reversed", row=1, col=1)
-        fig.update_yaxes(title_text="Price (Inverted Axis)", row=1, col=1)
 
     return fig
 

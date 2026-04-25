@@ -48,9 +48,7 @@ def plot_cot_with_dxy(cot_name: str, num_bars: int = 1000, height: int = 900):
         print(f"No COT data found for USD INDEX.")
         return None
 
-    # Check if this pair needs price inversion (USD base currency)
-    invert_price = mt5_symbol in ['USDJPY', 'USDCHF', 'USDCAD']
-    axis_title_note = " (Inverted Axis)" if invert_price else ""
+    axis_title_note = ""
 
     # Create figure with 3 stacked subplots
     fig = make_subplots(
@@ -115,9 +113,6 @@ def plot_cot_with_dxy(cot_name: str, num_bars: int = 1000, height: int = 900):
     fig.update_yaxes(title_text="<b>Contracts</b>", row=2, col=1)
     fig.update_yaxes(title_text="<b>Contracts</b>", row=3, col=1)
 
-    # Apply Inversion to visual alignment if necessary
-    if invert_price:
-        fig.update_yaxes(autorange="reversed", row=1, col=1)
 
     # Force x-axis to align limits sensibly across all 3 traces
     all_dates = list(df_mt5.index) + df_cot['Date'].tolist() + df_dxy_cot['Date'].tolist()
