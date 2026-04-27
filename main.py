@@ -103,15 +103,27 @@ def plot_cot_with_dxy(cot_name: str, num_bars: int = 1000, height: int = 900):
     fig.update_layout(
         height=height,
         hovermode="x unified",
+        hoverdistance=100,
+        spikedistance=-1,
         template="plotly_white",
         showlegend=False,
         margin=dict(l=20, r=20, t=60, b=20)
     )
 
+    # Plotly >=5.21 supports cross-subplot hover; keep compatibility fallback.
+    try:
+        fig.update_layout(hoversubplots="axis")
+    except ValueError:
+        pass
+
     # Set y-axes titles
     fig.update_yaxes(title_text=f"<b>Price</b>{axis_title_note}", row=1, col=1)
     fig.update_yaxes(title_text="<b>Contracts</b>", row=2, col=1)
     fig.update_yaxes(title_text="<b>Contracts</b>", row=3, col=1)
+
+    fig.update_xaxes(showspikes=True, spikemode="across", spikesnap="cursor")
+    fig.update_xaxes(matches="x", row=2, col=1)
+    fig.update_xaxes(matches="x", row=3, col=1)
 
 
     # Force x-axis to align limits sensibly across all 3 traces

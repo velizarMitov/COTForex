@@ -3,6 +3,15 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
+def apply_shared_crosshair(fig: go.Figure) -> go.Figure:
+    """Adds a unified vertical crosshair that spans across all stacked subplots."""
+    try:
+        fig.update_layout(hoversubplots="axis")
+    except Exception:
+        pass
+
+    return fig
+
 def build_overlay_chart(df_merged: pd.DataFrame, selected_pair: str, selected_cot_name: str, date_density: str = "Auto") -> go.Figure:
     fig = make_subplots(specs=[[{"secondary_y": True}]])
 
@@ -83,7 +92,12 @@ def build_overlay_chart(df_merged: pd.DataFrame, selected_pair: str, selected_co
     return fig
 
 
-def build_stacked_chart(df_merged: pd.DataFrame, selected_pair: str, selected_cot_name: str, date_density: str = "Auto") -> go.Figure:
+def build_stacked_chart(
+    df_merged: pd.DataFrame,
+    selected_pair: str,
+    selected_cot_name: str,
+    date_density: str = "Auto",
+) -> go.Figure:
     fig = make_subplots(
         rows=3,
         cols=1,
@@ -150,9 +164,6 @@ def build_stacked_chart(df_merged: pd.DataFrame, selected_pair: str, selected_co
         "hoverformat": "%Y-%m-%d",
         "showgrid": True,
         "gridcolor": "rgba(148,163,184,0.15)",
-        "showspikes": True,
-        "spikemode": "across",
-        "spikesnap": "cursor"
     }
 
     if date_density == "1 Year":
@@ -177,7 +188,6 @@ def build_stacked_chart(df_merged: pd.DataFrame, selected_pair: str, selected_co
     fig.update_yaxes(title_text="Price", row=1, col=1)
     fig.update_yaxes(title_text="Pair Net OI %", row=2, col=1)
     fig.update_yaxes(title_text="USD Index Net OI %", row=3, col=1)
-
 
     return fig
 

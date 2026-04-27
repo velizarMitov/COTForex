@@ -1,4 +1,4 @@
 pandas>=2.2.0
 MetaTrader5>=5.0.45
-plotly>=5.18.0
+plotly>=5.21.0
 streamlit>=1.32.0
