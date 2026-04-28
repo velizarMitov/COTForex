@@ -60,6 +60,24 @@ A tab will automatically open in your default browser at `http://localhost:8501`
 
 ---
 
+### Data Selection Rationale: Why These Specific Indicators?
+
+To adhere to the Scientific Method and ensure our exploratory and statistical analysis is robust, every variable extracted was deliberately chosen to represent a specific facet of the macroeconomic machine. Furthermore, understanding the distinct statistical characteristics and reporting frequencies of these variables is crucial for our data handling strategy.
+
+*   **S&P 500 (`^GSPC`)**: Serves as our primary dependent variable. It is the ultimate benchmark for US equity market performance, reflecting aggregate corporate earnings expectations and overall investor risk appetite. 
+    *   *Data Characteristics*: High-frequency (daily) continuous numerical time-series. Because absolute equity prices exhibit non-stationary, exponential upward trends, this data will require mathematical transformation into percentage changes (returns) to be viable for statistical testing.
+*   **10-Year and 2-Year Treasury Yields (`DGS10` & `DGS2`)**: These are the core independent variables of our study. The mathematical difference (spread) between the long-term (10Y) and short-term (2Y) borrowing costs is universally recognized as the most reliable leading indicator of impending recessions. 
+    *   *Data Characteristics*: High-frequency (daily) continuous numerical data. These variables are highly cyclical and will be used to engineer a new categorical feature: the 'Yield Curve State' (Normal vs. Inverted).
+*   **Consumer Price Index (`CPIAUCSL`)**: Essential for advanced exploratory data analysis. Inflation acts as a hidden mediating factor in financial markets. By tracking CPI, we can segment our timeline into distinct economic regimes (e.g., 'High Inflation' vs. 'Low Inflation').
+    *   *Data Characteristics*: Lower-frequency (monthly) continuous data.
+*   **Gross Domestic Product (`GDP`) & US Dollar Index (`DX-Y.NYB`)**: These provide critical macroeconomic context. GDP serves as the ultimate scorecard for absolute economic output, while the US Dollar Index reflects global liquidity and currency strength.
+    *   *Data Characteristics*: GDP is a low-frequency (quarterly) lagging indicator, while the DXY is a high-frequency (daily) concurrent indicator. 
+
+**Methodological Implication:** 
+By consolidating these specific features, we construct a multi-dimensional dataset perfectly tailored to test our hypothesis. However, the inherent heterogeneity in their reporting frequencies (daily vs. monthly vs. quarterly) explicitly dictates our Data Tidying approach: we must employ forward-filling (`ffill()`) techniques to align the macroeconomic data with the daily trading calendar without introducing look-ahead bias.
+
+---
+
 ## 📂 Project Structure
 
 * `main.py` — Core data merger and robust Plotly chart generation.
