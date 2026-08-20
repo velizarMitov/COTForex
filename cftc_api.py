@@ -168,15 +168,23 @@ def calculate_momentum_metrics(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def calculate_extremes(df: pd.DataFrame) -> pd.DataFrame:
-    """Calculates the 52-week percentiles based on Net Position."""
+def calculate_extremes(df: pd.DataFrame, window: int = 52, min_periods: int = 26) -> pd.DataFrame:
+    """Calculates the rolling min-max percentile (Williams COT Index) of Net Position.
+
+    ``min_periods`` matters a lot: with min_periods=1 the first weeks are ranked
+    against a 1-3 point window, so the series starts out pinned at 0 or 100 and
+    fabricates "extremes" that never existed. Anything before a half-window of
+    history is reported as neutral (50) instead.
+    """
     if df.empty or "Net Position" not in df.columns:
         return df
-        
-    roll_min = df["Net Position"].rolling(window=52, min_periods=1).min()
-    roll_max = df["Net Position"].rolling(window=52, min_periods=1).max()
-    
-    percentile = ((df["Net Position"] - roll_min) / (roll_max - roll_min)) * 100
+
+    min_periods = max(2, min(min_periods, window))
+    roll_min = df["Net Position"].rolling(window=window, min_periods=min_periods).min()
+    roll_max = df["Net Position"].rolling(window=window, min_periods=min_periods).max()
+
+    span = roll_max - roll_min
+    percentile = ((df["Net Position"] - roll_min) / span.where(span != 0)) * 100
     df["52-Week Percentile"] = percentile.fillna(50)
     return df
 

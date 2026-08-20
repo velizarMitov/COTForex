@@ -18,9 +18,14 @@ def load_and_align_data(selected_pair: str, selected_cot_name: str, num_bars: in
     df_cot['Date'] = pd.to_datetime(df_cot['Date']).dt.tz_localize(None)
     df_dxy['Date'] = pd.to_datetime(df_dxy['Date']).dt.tz_localize(None)
 
+    # Carry the percentile through so charts can mark positioning extremes.
+    merge_cols = ['Date', 'Net Position', 'Net_Pct_of_OI', '52-Week Percentile']
+    cot_cols = [c for c in merge_cols if c in df_cot.columns]
+    dxy_cols = [c for c in merge_cols if c in df_dxy.columns]
+
     df_cot_merged = pd.merge(
-        df_cot[['Date', 'Net Position', 'Net_Pct_of_OI']],
-        df_dxy[['Date', 'Net Position', 'Net_Pct_of_OI']],
+        df_cot[cot_cols],
+        df_dxy[dxy_cols],
         on='Date', how='inner', suffixes=('', '_dxy')
     ).sort_values('Date')
 

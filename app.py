@@ -3,8 +3,102 @@ import pandas as pd
 
 from main import COT_TO_MT5
 from data_processor import load_and_align_data, get_comparison_data
-from charts import build_overlay_chart, build_stacked_chart, build_heatmap_chart, apply_shared_crosshair
+from charts import (
+    build_overlay_chart,
+    build_stacked_chart,
+    build_comparison_chart,
+    build_heatmap_chart,
+    apply_shared_crosshair,
+    PLOTLY_CONFIG,
+)
 from ui_components import render_momentum_metrics, render_sentiment_extremes
+
+CHART_VIEWS = [
+    "Comparison (Aligned)",
+    "Stacked (one under another)",
+    "Overlay",
+    "Heatmap Analysis",
+]
+
+
+def _comparison_controls(key_prefix: str) -> dict:
+    """Sidebar controls that only apply to the Comparison view."""
+    st.sidebar.markdown("**Comparison options**")
+    return {
+        "invert_dxy": st.sidebar.toggle(
+            "Invert USD Index panel",
+            value=True,
+            key=f"{key_prefix}_invert",
+            help="Long EUR and short USD are the same trade. Inverting makes both "
+                 "panels point the same way when positioning agrees.",
+        ),
+        "show_extreme_zones": st.sidebar.toggle(
+            "Show extreme zones (P90 / P10)",
+            value=True,
+            key=f"{key_prefix}_zones",
+        ),
+        "show_extreme_markers": st.sidebar.toggle(
+            "Mark extremes on price",
+            value=True,
+            key=f"{key_prefix}_markers",
+            help="Triangles where the 52-week percentile crosses the threshold below.",
+        ),
+        "extreme_threshold": st.sidebar.slider(
+            "Extreme threshold (percentile)",
+            min_value=80, max_value=99, value=90, step=1,
+            key=f"{key_prefix}_thr",
+            help="90 means: positioning is in the top 10% or bottom 10% of its own "
+                 "52-week range. Note this does NOT reduce the marker count much — a "
+                 "rolling min-max percentile hits 100 on every new 52-week high, so a "
+                 "higher threshold just fragments runs. Use Cooldown to thin them out.",
+        ),
+        "marker_mode": st.sidebar.radio(
+            "Marker density",
+            ["First touch only", "Every week"],
+            index=0,
+            horizontal=True,
+            key=f"{key_prefix}_mdensity",
+            help="A rolling min-max percentile prints 100 on every new 52-week high, "
+                 "so a single trend fires for many consecutive weeks. 'First touch' "
+                 "collapses each run to the week it entered the extreme.",
+        ),
+        "marker_cooldown": st.sidebar.slider(
+            "Cooldown between markers (weeks)",
+            min_value=0, max_value=26, value=8, step=1,
+            key=f"{key_prefix}_cool",
+            help="Suppresses a re-entry into the same extreme within this many weeks.",
+        ),
+        "show_extreme_shading": st.sidebar.toggle(
+            "Shade extreme periods",
+            value=False,
+            key=f"{key_prefix}_shading",
+            help="Off by default: the markers already flag the same events, and the "
+                 "stripes make a 20-year view hard to read.",
+        ),
+        "corr_window": st.sidebar.slider(
+            "Rolling correlation window (weeks)",
+            min_value=8, max_value=104, value=26, step=2,
+            key=f"{key_prefix}_corr",
+        ),
+    }
+
+
+def _build_chart(mode, df_merged, selected_pair, selected_cot_name, date_density,
+                 enable_crosshair, comparison_opts):
+    if mode == "Overlay":
+        return build_overlay_chart(df_merged, selected_pair, selected_cot_name, date_density)
+    if mode == "Heatmap Analysis":
+        return build_heatmap_chart(df_merged, selected_pair, selected_cot_name)
+    if mode == "Comparison (Aligned)":
+        return build_comparison_chart(
+            df_merged, selected_pair, selected_cot_name, date_density,
+            **(comparison_opts or {})
+        )
+
+    fig = build_stacked_chart(df_merged, selected_pair, selected_cot_name, date_density)
+    if enable_crosshair:
+        fig = apply_shared_crosshair(fig)
+    return fig
 
 # Reverse the COT_TO_MT5 dict so we lookup COT names from MT5 symbols
 mt5_to_cot = {mt5_sym: cot_name for cot_name, mt5_sym in COT_TO_MT5.items()}
@@ -23,11 +117,11 @@ def render_main_dashboard():
     selected_pair = st.sidebar.selectbox("Select Currency Pair", mt5_options)
     display_mode = st.sidebar.radio(
         "Chart View",
-        ["Stacked (one under another)", "Overlay", "Heatmap Analysis"],
+        CHART_VIEWS,
         index=0,
-        help="Stacked = easier reading, Overlay = direct correlation view, Heatmap = professional correlation & seasonality",
+        help="Comparison = aligned panels on a shared scale + spread & rolling correlation, "
+             "Stacked = simple read, Overlay = one panel, Heatmap = correlation & seasonality",
     )
-
 
     date_density = st.sidebar.selectbox(
         "Date Axis Label Format",
@@ -43,6 +137,10 @@ def render_main_dashboard():
             value=True,
             help="Displays a unified vertical line across all 3 stacked charts."
         )
+
+    comparison_opts = None
+    if display_mode == "Comparison (Aligned)":
+        comparison_opts = _comparison_controls("main")
 
     num_bars = st.sidebar.slider(
         "Number of Weekly Bars",
@@ -62,14 +160,8 @@ def render_main_dashboard():
         df_merged, df_cot, df_dxy, df_mt5 = load_and_align_data(selected_pair, selected_cot_name, num_bars)
 
         if not df_merged.empty:
-            if display_mode == "Overlay":
-                fig = build_overlay_chart(df_merged, selected_pair, selected_cot_name, date_density)
-            elif display_mode == "Heatmap Analysis":
-                fig = build_heatmap_chart(df_merged, selected_pair, selected_cot_name)
-            else:
-                fig = build_stacked_chart(df_merged, selected_pair, selected_cot_name, date_density)
-                if enable_crosshair:
-                    fig = apply_shared_crosshair(fig)
+            fig = _build_chart(display_mode, df_merged, selected_pair, selected_cot_name,
+                               date_density, enable_crosshair, comparison_opts)
 
             render_momentum_metrics(df_mt5, df_cot, df_dxy, selected_pair, selected_cot_name)
 
@@ -77,7 +169,7 @@ def render_main_dashboard():
             render_sentiment_extremes(df_cot, df_dxy, selected_cot_name)
             st.markdown("---")
 
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
         else:
             st.error("Failed to generate the chart. Please check terminal logs for details or if datasets overlap.")
 
@@ -147,10 +239,11 @@ def render_open_interest_analysis():
      selected_cot_name = mt5_to_cot[selected_pair]
      oi_display_mode = st.sidebar.radio(
          "OI Chart View",
-         ["Stacked (one under another)", "Overlay", "Heatmap Analysis"],
+         CHART_VIEWS,
          index=0,
          key="oi_chart_view",
-         help="Stacked = clearer read, Overlay = compare on one panel, Heatmap = correlation & seasonality matrices",
+         help="Comparison = aligned panels + spread & rolling correlation, Stacked = clearer read, "
+              "Overlay = compare on one panel, Heatmap = correlation & seasonality matrices",
      )
 
      date_density = st.sidebar.selectbox(
@@ -170,6 +263,10 @@ def render_open_interest_analysis():
              help="Displays a unified vertical line across all 3 stacked charts."
          )
 
+     comparison_opts_oi = None
+     if oi_display_mode == "Comparison (Aligned)":
+         comparison_opts_oi = _comparison_controls("oi")
+
      num_bars = st.sidebar.slider(
          "Number of Weekly Bars",
          min_value=100,
@@ -183,16 +280,10 @@ def render_open_interest_analysis():
          df_merged, df_cot, df_dxy, df_mt5 = load_and_align_data(selected_pair, selected_cot_name, num_bars)
 
          if not df_merged.empty and 'Net_Pct_of_OI' in df_merged.columns:
-             if oi_display_mode == "Overlay":
-                 fig = build_overlay_chart(df_merged, selected_pair, selected_cot_name, date_density)
-             elif oi_display_mode == "Heatmap Analysis":
-                 fig = build_heatmap_chart(df_merged, selected_pair, selected_cot_name)
-             else:
-                 fig = build_stacked_chart(df_merged, selected_pair, selected_cot_name, date_density)
-                 if enable_crosshair_oi:
-                     fig = apply_shared_crosshair(fig)
+             fig = _build_chart(oi_display_mode, df_merged, selected_pair, selected_cot_name,
+                                date_density, enable_crosshair_oi, comparison_opts_oi)
 
-             st.plotly_chart(fig, use_container_width=True)
+             st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
 
              # Show a quick metric for latest OI
              st.markdown("### Latest Snapshot")
@@ -202,10 +293,11 @@ def render_open_interest_analysis():
              latest_price = df_merged["close"].iloc[-1]
 
              st.write(f"**Aligned Date:** {latest_date}")
-             col1, col2, col3 = st.columns(3)
+             col1, col2, col3, col4 = st.columns(4)
              col1.metric(label=f"Current Price ({selected_pair})", value=f"{latest_price:.5f}")
              col2.metric(label=f"{selected_cot_name} Net OI", value=f"{latest_oi:.2f}%")
              col3.metric(label="USD INDEX Net OI", value=f"{latest_dxy_oi:.2f}%")
+             col4.metric(label="Spread (pair − USD)", value=f"{latest_oi - latest_dxy_oi:+.2f} pp")
 
          else:
              st.error("Could not fetch Open Interest or MT5 data for the selected assets.")
