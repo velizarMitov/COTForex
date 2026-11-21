@@ -1,5 +1,7 @@
 import streamlit as st
 
+from cftc_api import crowded_verdict
+
 def render_momentum_metrics(df_mt5, df_cot, df_dxy, selected_pair, selected_cot_name):
     """Renders the top-level momentum metrics for price and commitments."""
     st.subheader("Weekly Momentum Metrics")
@@ -26,22 +28,26 @@ def render_momentum_metrics(df_mt5, df_cot, df_dxy, selected_pair, selected_cot_
         )
 
 
-def _check_single_extreme(col_obj, name, cot_index):
-    col_obj.write(f"**{name} 52-Week Percentile**: {cot_index:.1f}%")
-    if cot_index >= 90:
-        col_obj.error("Extreme Bullish Sentiment (>=90%) - Potential Crowded Long (Reversal Zone)")
-    elif cot_index <= 10:
-        col_obj.error("Extreme Bearish Sentiment (<=10%) - Potential Crowded Short (Reversal Zone)")
+def _check_single_extreme(col_obj, name, latest):
+    pct, oi = latest["52-Week Percentile"], latest["Net_Pct_of_OI"]
+    col_obj.write(f"**{name}** - 52-week percentile: {pct:.0f}% | Net OI: {oi:+.1f}%")
+    verdict = crowded_verdict(latest)
+    if verdict == "long":
+        col_obj.error("Crowded Long - stretched vs last year and above its historical P90 (reversal risk)")
+    elif verdict == "short":
+        col_obj.error("Crowded Short - stretched vs last year and below its historical P10 (reversal risk)")
+    elif verdict == "warmup":
+        col_obj.info("Not enough history yet to judge (needs about 3 years of reports).")
     else:
-        col_obj.success("Neutral sentiment bounds within normal range.")
+        col_obj.success("Not crowded: positioning is not at a historical extreme.")
 
 
 def render_sentiment_extremes(df_cot, df_dxy, selected_cot_name):
-    """Renders the 52-week percentile alert panels."""
+    """Renders the crowded-positioning alert panels."""
     st.subheader("Market Sentiment Extremes")
     ext1, ext2 = st.columns(2)
     if not df_cot.empty:
-        _check_single_extreme(ext1, selected_cot_name, df_cot['52-Week Percentile'].iloc[-1])
+        _check_single_extreme(ext1, selected_cot_name, df_cot.iloc[-1])
     if not df_dxy.empty:
-        _check_single_extreme(ext2, "USD INDEX", df_dxy['52-Week Percentile'].iloc[-1])
+        _check_single_extreme(ext2, "USD INDEX", df_dxy.iloc[-1])
 

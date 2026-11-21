@@ -13,6 +13,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import urlopen
 
+import numpy as np
 import pandas as pd
 
 # Official CFTC Socrata dataset for "TFF - Futures Only".
@@ -184,6 +185,49 @@ def calculate_extremes(df: pd.DataFrame, window: int = 52, min_periods: int = 26
     return df
 
 
+ZONE_WARMUP_WEEKS = 156
+
+
+def expanding_zone(series: pd.Series, min_periods: int = ZONE_WARMUP_WEEKS):
+    """(P10, P90) of everything up to each week; NaN until ``min_periods`` weeks exist."""
+    expanding = series.expanding(min_periods=min_periods)
+    return expanding.quantile(0.10), expanding.quantile(0.90)
+
+
+def crowded_masks(pct, oi, zone_lo, zone_hi, threshold: float = 90.0):
+    """(crowded_long, crowded_short) boolean arrays.
+
+    Crowded means stretched against the last year (52-week percentile) AND rare
+    against the history known at that week (Net % of OI beyond its zone). NaN
+    zones compare False, so warm-up weeks never signal.
+    """
+    pct, oi = np.asarray(pct, dtype=float), np.asarray(oi, dtype=float)
+    zone_lo, zone_hi = np.asarray(zone_lo, dtype=float), np.asarray(zone_hi, dtype=float)
+    long_ = (pct >= threshold) & (oi >= zone_hi)
+    short = (pct <= 100.0 - threshold) & (oi <= zone_lo)
+    return long_, short
+
+
+def calculate_crowded(df: pd.DataFrame, threshold: float = 90.0) -> pd.DataFrame:
+    """Adds the historical OI zone and the +1/-1/0 ``Crowded Signal`` column."""
+    if df.empty or "Net_Pct_of_OI" not in df.columns or "52-Week Percentile" not in df.columns:
+        return df
+
+    df["OI Zone Lo"], df["OI Zone Hi"] = expanding_zone(df["Net_Pct_of_OI"])
+    long_, short = crowded_masks(
+        df["52-Week Percentile"], df["Net_Pct_of_OI"], df["OI Zone Lo"], df["OI Zone Hi"], threshold
+    )
+    df["Crowded Signal"] = long_.astype(int) - short.astype(int)
+    return df
+
+
+def crowded_verdict(latest: pd.Series) -> str:
+    """'long', 'short', 'normal' or 'warmup' for one row of ``get_cot_data`` output."""
+    if pd.isna(latest["OI Zone Hi"]):
+        return "warmup"
+    return {1: "long", -1: "short"}.get(int(latest["Crowded Signal"]), "normal")
+
+
 def get_cot_data(currency_name: str) -> pd.DataFrame:
     """Wrapper to maintain compatibility."""
     empty = pd.DataFrame(
@@ -196,6 +240,9 @@ def get_cot_data(currency_name: str) -> pd.DataFrame:
             "52-Week Percentile",
             "52W Min",
             "52W Max",
+            "OI Zone Lo",
+            "OI Zone Hi",
+            "Crowded Signal",
         ]
     )
 
@@ -212,4 +259,5 @@ def get_cot_data(currency_name: str) -> pd.DataFrame:
     df = calculate_open_interest(df)
     df = calculate_momentum_metrics(df)
     df = calculate_extremes(df)
+    df = calculate_crowded(df)
     return df

@@ -44,7 +44,7 @@
 
 ## 8. Integration check
 
-- [ ] 8.1 Run the full suite and a live smoke test. Verify:
+- [x] 8.1 Run the full suite and a live smoke test. Verify:
   - `python -m pytest -q` passes.
   - With MT5 running, `streamlit run app.py` loads all three pages and all four chart views for EURUSD and USDJPY.
   - Toggling options after the first load triggers no new CFTC fetch (no repeated spinner delay).

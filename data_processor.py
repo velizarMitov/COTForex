@@ -4,7 +4,7 @@ import pandas as pd
 import streamlit as st
 
 from symbols import MT5_TO_COT as mt5_to_cot
-from cftc_api import get_cot_data
+from cftc_api import crowded_verdict, get_cot_data
 from mt5_api import get_forex_data
 
 
@@ -64,7 +64,8 @@ def load_and_align_data(selected_pair: str, selected_cot_name: str, num_bars: in
     df_dxy['Date'] = pd.to_datetime(df_dxy['Date']).dt.tz_localize(None)
 
     # Carry the percentile through so charts can mark positioning extremes.
-    merge_cols = ['Date', 'Net Position', 'Net_Pct_of_OI', '52-Week Percentile']
+    merge_cols = ['Date', 'Net Position', 'Net_Pct_of_OI', '52-Week Percentile',
+                  'OI Zone Lo', 'OI Zone Hi']
     cot_cols = [c for c in merge_cols if c in df_cot.columns]
     dxy_cols = [c for c in merge_cols if c in df_dxy.columns]
 
@@ -98,6 +99,14 @@ def load_and_align_data(selected_pair: str, selected_cot_name: str, num_bars: in
     return AlignedData(df_merged, df_cot, df_dxy, df_mt5, None)
 
 
+CROWDED_LABELS = {"long": "Long", "short": "Short", "normal": "No", "warmup": "Insufficient history"}
+
+
+def crowded_label(latest) -> str:
+    """Verdict for one COT row: 'Long', 'Short', 'No', or 'Insufficient history'."""
+    return CROWDED_LABELS[crowded_verdict(latest)]
+
+
 def _int_or_none(value):
     return None if pd.isna(value) else int(value)
 
@@ -112,6 +121,7 @@ def _extreme_row(label: str, df: pd.DataFrame) -> dict:
         "52W Min": _int_or_none(latest["52W Min"]),
         "52W Max": _int_or_none(latest["52W Max"]),
         "52W Percentile (%)": None if pd.isna(pct) else round(float(pct), 2),
+        "Crowded": crowded_label(latest),
     }
 
 

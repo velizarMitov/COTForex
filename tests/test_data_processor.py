@@ -2,7 +2,7 @@ import pandas as pd
 import pytest
 
 import data_processor
-from cftc_api import calculate_extremes, calculate_momentum_metrics
+from cftc_api import calculate_crowded, calculate_extremes, calculate_momentum_metrics
 from data_processor import load_and_align_data
 
 REPORT_DATES = pd.date_range("2023-01-03", periods=60, freq="7D")  # Tuesdays
@@ -14,7 +14,7 @@ def _cot_frame(offset=0.0):
         "Net Position": [float(i) + offset for i in range(len(REPORT_DATES))],
         "Net_Pct_of_OI": [i / 10 + offset for i in range(len(REPORT_DATES))],
     })
-    return calculate_extremes(calculate_momentum_metrics(df))
+    return calculate_crowded(calculate_extremes(calculate_momentum_metrics(df)))
 
 
 def _mt5_frame(start="2023-01-01"):
@@ -93,3 +93,9 @@ def test_error_when_dates_do_not_overlap(sources):
     sources["mt5_start"] = "2010-01-03"
     result = load_and_align_data("EURUSD", "EURO FX", 100)
     assert result.error == "No overlapping dates between COT and MT5 data"
+
+
+def test_merged_frame_carries_historical_zones(sources):
+    merged = load_and_align_data("EURUSD", "EURO FX", 100).merged
+    for col in ("OI Zone Lo", "OI Zone Hi", "OI Zone Lo_dxy", "OI Zone Hi_dxy"):
+        assert col in merged.columns

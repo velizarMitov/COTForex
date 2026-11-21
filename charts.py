@@ -14,6 +14,8 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
+from cftc_api import crowded_masks, expanding_zone
+
 # --------------------------------------------------------------------------
 # Theme
 # --------------------------------------------------------------------------
@@ -226,43 +228,35 @@ def _add_split_area(
     )
 
 
-def _add_extreme_zones(
-    fig: go.Figure,
-    y,
-    row: int,
-    y_max: float,
-    lo_pct: float = 10,
-    hi_pct: float = 90,
-) -> tuple:
-    """Shade the historical top/bottom decile of the series.
-
-    Upper decile = crowded long = reversal risk -> red tint.
-    Lower decile = crowded short -> green tint.
-    """
-    y = np.asarray(y, dtype=float)
-    finite = y[np.isfinite(y)]
-    if finite.size < 20:
-        return (np.nan, np.nan)
-
-    hi = float(np.percentile(finite, hi_pct))
-    lo = float(np.percentile(finite, lo_pct))
-
-    fig.add_hrect(
-        y0=hi, y1=y_max,
-        fillcolor=_rgba(NEG, 0.09), line_width=0, layer="below",
-        row=row, col=1,
-    )
-    fig.add_hrect(
-        y0=-y_max, y1=lo,
-        fillcolor=_rgba(POS, 0.09), line_width=0, layer="below",
-        row=row, col=1,
-    )
-    for level, color in ((hi, NEG), (lo, POS)):
-        fig.add_hline(
-            y=level, line_dash="dash", line_width=1,
-            line_color=_rgba(color, 0.5), row=row, col=1,
+def _add_zone_lines(fig: go.Figure, x, lo, hi, row: int) -> None:
+    """Evolving P10/P90 lines (history known at each week). Upper = crowded long
+    side (red), lower = crowded short side (green). Nothing is drawn in warm-up."""
+    for level, color, name in ((hi, NEG, "Historical P90"), (lo, POS, "Historical P10")):
+        level = np.asarray(level, dtype=float)
+        if not np.isfinite(level).any():
+            continue
+        fig.add_trace(
+            go.Scatter(
+                x=x,
+                y=level,
+                mode="lines",
+                name=name,
+                line=dict(width=1, dash="dash", color=_rgba(color, 0.6)),
+                hoverinfo="skip",
+                showlegend=False,
+            ),
+            row=row,
+            col=1,
         )
-    return (lo, hi)
+
+
+def _zone_arrays(df: pd.DataFrame, suffix: str = ""):
+    """(lo, hi) historical zone for the pair or, with suffix '_dxy', the USD Index."""
+    lo_col, hi_col = f"OI Zone Lo{suffix}", f"OI Zone Hi{suffix}"
+    if lo_col in df.columns and hi_col in df.columns:
+        return (df[lo_col].to_numpy(dtype=float), df[hi_col].to_numpy(dtype=float))
+    lo, hi = expanding_zone(df[f"Net_Pct_of_OI{suffix}"])
+    return lo.to_numpy(dtype=float), hi.to_numpy(dtype=float)
 
 
 def _extreme_blocks(
@@ -552,16 +546,22 @@ def build_comparison_chart(
     _add_split_area(fig, dates, pair_oi, 2, f"{selected_cot_name} Net OI")
     _add_split_area(fig, dates, dxy_oi, 3, "USD Index Net OI")
 
+    pair_lo, pair_hi = _zone_arrays(df)
+    dxy_lo, dxy_hi = _zone_arrays(df, "_dxy")
     if show_extreme_zones:
-        _add_extreme_zones(fig, pair_oi, 2, limit)
-        _add_extreme_zones(fig, dxy_oi, 3, limit)
+        _add_zone_lines(fig, dates, pair_lo, pair_hi, 2)
+        if invert_dxy:
+            _add_zone_lines(fig, dates, -dxy_hi, -dxy_lo, 3)
+        else:
+            _add_zone_lines(fig, dates, dxy_lo, dxy_hi, 3)
 
     # ---- Row 4: spread ----------------------------------------------------
     spread_limit = _symmetric_limit(spread)
     _add_split_area(fig, dates, spread, 4, "Spread", pos_color=VIOLET, neg_color="#F97316",
                     alpha=0.5)
     if show_extreme_zones:
-        _add_extreme_zones(fig, spread, 4, spread_limit)
+        spread_lo, spread_hi = expanding_zone(pd.Series(spread))
+        _add_zone_lines(fig, dates, spread_lo.to_numpy(), spread_hi.to_numpy(), 4)
 
     # ---- Row 5: rolling correlation ---------------------------------------
     if len(df) > corr_window:
@@ -593,8 +593,8 @@ def build_comparison_chart(
         hi_thr = float(extreme_threshold)
         lo_thr = 100.0 - hi_thr
 
-        bull_raw = pct >= hi_thr
-        bear_raw = pct <= lo_thr
+        # Crowded = stretched vs last year AND rare vs the history known at that week.
+        bull_raw, bear_raw = crowded_masks(pct, pair_oi, pair_lo, pair_hi, hi_thr)
 
         # A rolling min-max percentile re-prints 100 on every new high, so
         # without this collapse a single trend produces dozens of markers.
@@ -605,8 +605,8 @@ def build_comparison_chart(
             bear = _first_touch(bear_raw, marker_min_run, marker_cooldown)
 
         ccy = selected_cot_name.title()
-        bull_label = f"Crowded LONG {ccy} futures (52w pct ≥ {hi_thr:.0f})"
-        bear_label = f"Crowded SHORT {ccy} futures (52w pct ≤ {lo_thr:.0f})"
+        bull_label = f"Crowded LONG {ccy} futures (52w pct ≥ {hi_thr:.0f} & OI ≥ hist. P90)"
+        bear_label = f"Crowded SHORT {ccy} futures (52w pct ≤ {lo_thr:.0f} & OI ≤ hist. P10)"
         # Markers point to the pair's expected unwind move. With USD as base,
         # a crowded-long foreign currency unwinds as the pair rising.
         down_above = ("triangle-down", NEG, +1)

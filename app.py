@@ -35,24 +35,25 @@ def _comparison_controls(key_prefix: str) -> dict:
                  "panels point the same way when positioning agrees.",
         ),
         "show_extreme_zones": st.sidebar.toggle(
-            "Show extreme zones (P90 / P10)",
+            "Show historical zones (P90 / P10)",
             value=True,
             key=f"{key_prefix}_zones",
+            help="Dashed lines: the 10th and 90th percentile of Net OI using only data "
+                 "known at each week. Nothing is drawn for the first ~3 years.",
         ),
         "show_extreme_markers": st.sidebar.toggle(
-            "Mark extremes on price",
+            "Mark crowded positioning on price",
             value=True,
             key=f"{key_prefix}_markers",
-            help="Triangles where the 52-week percentile crosses the threshold below.",
+            help="Triangles only where positioning is BOTH stretched versus the last "
+                 "year (threshold below) AND beyond its historical P90/P10.",
         ),
         "extreme_threshold": st.sidebar.slider(
-            "Extreme threshold (percentile)",
+            "Stretch threshold (52-week percentile)",
             min_value=80, max_value=99, value=90, step=1,
             key=f"{key_prefix}_thr",
-            help="90 means: positioning is in the top 10% or bottom 10% of its own "
-                 "52-week range. Note this does NOT reduce the marker count much — a "
-                 "rolling min-max percentile hits 100 on every new 52-week high, so a "
-                 "higher threshold just fragments runs. Use Cooldown to thin them out.",
+            help="Sets only the 'stretched versus the last year' side. The historical "
+                 "side is fixed at P90 / P10, which is what keeps markers rare.",
         ),
         "marker_mode": st.sidebar.radio(
             "Marker density",
@@ -60,9 +61,7 @@ def _comparison_controls(key_prefix: str) -> dict:
             index=0,
             horizontal=True,
             key=f"{key_prefix}_mdensity",
-            help="A rolling min-max percentile prints 100 on every new 52-week high, "
-                 "so a single trend fires for many consecutive weeks. 'First touch' "
-                 "collapses each run to the week it entered the extreme.",
+            help="'First touch' collapses each run of crowded weeks to the week it began.",
         ),
         "marker_cooldown": st.sidebar.slider(
             "Cooldown between markers (weeks)",
@@ -106,20 +105,17 @@ mt5_to_cot = MT5_TO_COT
 mt5_options = list(MT5_TO_COT)
 
 
-def highlight_percentile(val):
-    if pd.isna(val):
-        return ''
-    if val >= 90:
+def highlight_crowded(val):
+    if val == "Long":
         return 'background-color: rgba(255, 99, 71, 0.4); color: white;'
-    if val <= 10:
+    if val == "Short":
         return 'background-color: rgba(60, 179, 113, 0.4); color: white;'
     return ''
 
 
 def crowded_assets(res_df: pd.DataFrame):
-    """(crowded long rows, crowded short rows); NaN percentiles fall in neither."""
-    pct = pd.to_numeric(res_df["52W Percentile (%)"], errors="coerce")
-    return res_df[pct >= 90], res_df[pct <= 10]
+    """(crowded long rows, crowded short rows) from the ``Crowded`` verdict column."""
+    return res_df[res_df["Crowded"] == "Long"], res_df[res_df["Crowded"] == "Short"]
 
 
 class ChartSettings(NamedTuple):
@@ -223,7 +219,7 @@ def render_extremes_comparison():
             if not res_df.empty:
                 styled_df = (
                     res_df.style
-                    .map(highlight_percentile, subset=["52W Percentile (%)"])
+                    .map(highlight_crowded, subset=["Crowded"])
                     .format(na_rep="")
                 )
                 st.dataframe(styled_df, width="stretch")
@@ -232,12 +228,12 @@ def render_extremes_comparison():
                 bull_crowded, bear_crowded = crowded_assets(res_df)
                 
                 if bull_crowded.empty and bear_crowded.empty:
-                    st.success("✅ All selected assets are currently within normal market bounds (between 10% and 90%).")
+                    st.success("✅ No selected asset is crowded: none is both stretched versus the last year and at a historical extreme.")
                 else:
                     for _, row in bull_crowded.iterrows():
-                        st.error(f"🚨 **{row['Asset']}** has an Extreme Bullish profile (**{row['52W Percentile (%)']}%**) - Heavy Long / Reversal Risk")
+                        st.error(f"🚨 **{row['Asset']}** is crowded LONG (52w percentile **{row['52W Percentile (%)']}%**, above its historical P90) - Reversal Risk")
                     for _, row in bear_crowded.iterrows():
-                        st.warning(f"📉 **{row['Asset']}** has an Extreme Bearish profile (**{row['52W Percentile (%)']}%**) - Heavy Short / Reversal Risk")
+                        st.warning(f"📉 **{row['Asset']}** is crowded SHORT (52w percentile **{row['52W Percentile (%)']}%**, below its historical P10) - Reversal Risk")
                 
                 st.markdown("<br>", unsafe_allow_html=True)
                 
