@@ -158,10 +158,7 @@ def _range_selector() -> dict:
 
 def apply_shared_crosshair(fig: go.Figure) -> go.Figure:
     """Adds a unified vertical crosshair that spans across all stacked subplots."""
-    try:
-        fig.update_layout(hoversubplots="axis")
-    except Exception:
-        pass
+    fig.update_layout(hoversubplots="axis")
     return fig
 
 
@@ -453,7 +450,6 @@ def build_stacked_chart(
     limit = _symmetric_limit(df_merged["Net_Pct_of_OI"], df_merged["Net_Pct_of_OI_dxy"])
 
     _theme(fig, 980, f"{selected_pair} Price and OI% (Stacked)")
-    apply_shared_crosshair(fig)
 
     fig.update_xaxes(**_x_axis_kwargs(date_density))
     fig.update_xaxes(rangeselector=_range_selector(), row=1, col=1)
@@ -608,9 +604,17 @@ def build_comparison_chart(
             bull = _first_touch(bull_raw, marker_min_run, marker_cooldown)
             bear = _first_touch(bear_raw, marker_min_run, marker_cooldown)
 
+        ccy = selected_cot_name.title()
+        bull_label = f"Crowded LONG {ccy} futures (52w pct ≥ {hi_thr:.0f})"
+        bear_label = f"Crowded SHORT {ccy} futures (52w pct ≤ {lo_thr:.0f})"
+        # Markers point to the pair's expected unwind move. With USD as base,
+        # a crowded-long foreign currency unwinds as the pair rising.
+        down_above = ("triangle-down", NEG, +1)
+        up_below = ("triangle-up", POS, -1)
+        bull_dir, bear_dir = (up_below, down_above) if usd_is_base else (down_above, up_below)
         marker_specs = (
-            (bull, "triangle-down", NEG, +1, f"Crowded LONG (52w pct ≥ {hi_thr:.0f})"),
-            (bear, "triangle-up", POS, -1, f"Crowded SHORT (52w pct ≤ {lo_thr:.0f})"),
+            (bull, *bull_dir, bull_label),
+            (bear, *bear_dir, bear_label),
         )
         for mask, symbol, color, direction, label in marker_specs:
             if not mask.any():

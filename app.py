@@ -1,7 +1,9 @@
+from typing import NamedTuple, Optional
+
 import streamlit as st
 import pandas as pd
 
-from main import COT_TO_MT5
+from symbols import MT5_TO_COT
 from data_processor import load_and_align_data, get_comparison_data
 from charts import (
     build_overlay_chart,
@@ -100,10 +102,83 @@ def _build_chart(mode, df_merged, selected_pair, selected_cot_name, date_density
         fig = apply_shared_crosshair(fig)
     return fig
 
-# Reverse the COT_TO_MT5 dict so we lookup COT names from MT5 symbols
-mt5_to_cot = {mt5_sym: cot_name for cot_name, mt5_sym in COT_TO_MT5.items()}
-mt5_options = list(mt5_to_cot.keys())
+mt5_to_cot = MT5_TO_COT
+mt5_options = list(MT5_TO_COT)
 
+
+def highlight_percentile(val):
+    if pd.isna(val):
+        return ''
+    if val >= 90:
+        return 'background-color: rgba(255, 99, 71, 0.4); color: white;'
+    if val <= 10:
+        return 'background-color: rgba(60, 179, 113, 0.4); color: white;'
+    return ''
+
+
+def crowded_assets(res_df: pd.DataFrame):
+    """(crowded long rows, crowded short rows); NaN percentiles fall in neither."""
+    pct = pd.to_numeric(res_df["52W Percentile (%)"], errors="coerce")
+    return res_df[pct >= 90], res_df[pct <= 10]
+
+
+class ChartSettings(NamedTuple):
+    pair: str
+    cot_name: str
+    mode: str
+    date_density: str
+    crosshair: bool
+    comparison_opts: Optional[dict]
+    num_bars: int
+
+
+def _chart_sidebar(key_prefix: str, header: str, view_label: str) -> ChartSettings:
+    """Sidebar controls shared by every page that draws a price-vs-COT chart."""
+    st.sidebar.header(header)
+
+    pair = st.sidebar.selectbox("Select Currency Pair", mt5_options, key=f"{key_prefix}_pair")
+    mode = st.sidebar.radio(
+        view_label,
+        CHART_VIEWS,
+        index=0,
+        key=f"{key_prefix}_chart_view",
+        help="Comparison = aligned panels on a shared scale + spread & rolling correlation, "
+             "Stacked = simple read, Overlay = one panel, Heatmap = correlation & seasonality",
+    )
+    date_density = st.sidebar.selectbox(
+        "Date Axis Label Format",
+        ["Auto", "1 Year", "2 Years", "Quarterly", "Monthly"],
+        index=1,
+        key=f"{key_prefix}_date_density",
+        help="Select the density of the X-axis date labels.",
+    )
+
+    crosshair = False
+    if mode == "Stacked (one under another)":
+        crosshair = st.sidebar.toggle(
+            "Enable vertical crosshair",
+            value=True,
+            key=f"{key_prefix}_crosshair",
+            help="Displays a unified vertical line across all 3 stacked charts.",
+        )
+
+    comparison_opts = _comparison_controls(key_prefix) if mode == "Comparison (Aligned)" else None
+
+    num_bars = st.sidebar.slider(
+        "Number of Weekly Bars",
+        min_value=100,
+        max_value=2000,
+        value=1000,
+        step=100,
+        key=f"{key_prefix}_bars",
+    )
+    return ChartSettings(pair, mt5_to_cot[pair], mode, date_density, crosshair,
+                         comparison_opts, num_bars)
+
+
+def _settings_chart(s: ChartSettings, df_merged: pd.DataFrame):
+    return _build_chart(s.mode, df_merged, s.pair, s.cot_name, s.date_density,
+                        s.crosshair, s.comparison_opts)
 
 
 # --- MAIN VIEW ROUTING ---
@@ -111,67 +186,25 @@ def render_main_dashboard():
     st.title("Forex COT vs Price Analysis")
     st.markdown("Compare MT5 Weekly Close Prices directly with specific currency COT **AND** the USD Index COT on a single timeline.")
 
-    # Create the sidebar for user inputs
-    st.sidebar.header("Settings")
+    s = _chart_sidebar("main", "Settings", "Chart View")
 
-    selected_pair = st.sidebar.selectbox("Select Currency Pair", mt5_options)
-    display_mode = st.sidebar.radio(
-        "Chart View",
-        CHART_VIEWS,
-        index=0,
-        help="Comparison = aligned panels on a shared scale + spread & rolling correlation, "
-             "Stacked = simple read, Overlay = one panel, Heatmap = correlation & seasonality",
-    )
+    st.write(f"### Loading data for **{s.pair}** + **USD INDEX** COT ...")
 
-    date_density = st.sidebar.selectbox(
-        "Date Axis Label Format",
-        ["Auto", "1 Year", "2 Years", "Quarterly", "Monthly"],
-        index=1,
-        help="Select the density of the X-axis date labels."
-    )
-
-    enable_crosshair = False
-    if display_mode == "Stacked (one under another)":
-        enable_crosshair = st.sidebar.toggle(
-            "Enable vertical crosshair",
-            value=True,
-            help="Displays a unified vertical line across all 3 stacked charts."
-        )
-
-    comparison_opts = None
-    if display_mode == "Comparison (Aligned)":
-        comparison_opts = _comparison_controls("main")
-
-    num_bars = st.sidebar.slider(
-        "Number of Weekly Bars",
-        min_value=100,
-        max_value=2000,
-        value=1000,
-        step=100
-    )
-
-    # Fetch the corresponding COT name from the selected MT5 ticker
-    selected_cot_name = mt5_to_cot[selected_pair]
-
-    st.write(f"### Loading data for **{selected_pair}** + **USD INDEX** COT ...")
-
-    # Generate the chart
     with st.spinner("Fetching data from CFTC and MT5..."):
-        df_merged, df_cot, df_dxy, df_mt5 = load_and_align_data(selected_pair, selected_cot_name, num_bars)
+        df_merged, df_cot, df_dxy, df_mt5, error = load_and_align_data(s.pair, s.cot_name, s.num_bars)
 
-        if not df_merged.empty:
-            fig = _build_chart(display_mode, df_merged, selected_pair, selected_cot_name,
-                               date_density, enable_crosshair, comparison_opts)
-
-            render_momentum_metrics(df_mt5, df_cot, df_dxy, selected_pair, selected_cot_name)
-
-            st.markdown("---")
-            render_sentiment_extremes(df_cot, df_dxy, selected_cot_name)
-            st.markdown("---")
-
-            st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
+        if error:
+            st.error(error)
         else:
-            st.error("Failed to generate the chart. Please check terminal logs for details or if datasets overlap.")
+            fig = _settings_chart(s, df_merged)
+
+            render_momentum_metrics(df_mt5, df_cot, df_dxy, s.pair, s.cot_name)
+
+            st.markdown("---")
+            render_sentiment_extremes(df_cot, df_dxy, s.cot_name)
+            st.markdown("---")
+
+            st.plotly_chart(fig, width="stretch", config=PLOTLY_CONFIG)
 
 
 def render_extremes_comparison():
@@ -188,26 +221,15 @@ def render_extremes_comparison():
             res_df = get_comparison_data(selected_pairs_mt5, include_usd)
 
             if not res_df.empty:
-                # Setup explicit Styler to highlight percentiles >=90 and <=10
-                def highlight_percentile(val):
-                    if isinstance(val, (int, float)):
-                        if val >= 90:
-                            return 'background-color: rgba(255, 99, 71, 0.4); color: white;' # Light Red
-                        elif val <= 10:
-                            return 'background-color: rgba(60, 179, 113, 0.4); color: white;' # Light Green
-                    return ''
-                
-                # Explicitly fill any NaNs before styling to prevent errors
-                res_df = res_df.fillna(0)
-                styled_df = res_df.style.map(highlight_percentile, subset=["52W Percentile (%)"])
-                
-                # Render table
-                st.dataframe(styled_df, use_container_width=True)
-                
-                # Check for explicit extremes and display warnings
+                styled_df = (
+                    res_df.style
+                    .map(highlight_percentile, subset=["52W Percentile (%)"])
+                    .format(na_rep="")
+                )
+                st.dataframe(styled_df, width="stretch")
+
                 st.markdown("### Active Institutional Crowded Trade Warnings")
-                bull_crowded = res_df[res_df["52W Percentile (%)"] >= 90]
-                bear_crowded = res_df[res_df["52W Percentile (%)"] <= 10]
+                bull_crowded, bear_crowded = crowded_assets(res_df)
                 
                 if bull_crowded.empty and bear_crowded.empty:
                     st.success("✅ All selected assets are currently within normal market bounds (between 10% and 90%).")
@@ -231,76 +253,30 @@ def render_extremes_comparison():
                 st.info("No data returned for selected assets.")
 
 def render_open_interest_analysis():
-     st.title("Open Interest Analysis")
-     st.markdown("Analyze the net percentage of Open Interest (OI) held by leveraged speculative funds.")
+    st.title("Open Interest Analysis")
+    st.markdown("Analyze the net percentage of Open Interest (OI) held by leveraged speculative funds.")
 
-     st.sidebar.header("OI Settings")
-     selected_pair = st.sidebar.selectbox("Select Currency Pair", mt5_options)
-     selected_cot_name = mt5_to_cot[selected_pair]
-     oi_display_mode = st.sidebar.radio(
-         "OI Chart View",
-         CHART_VIEWS,
-         index=0,
-         key="oi_chart_view",
-         help="Comparison = aligned panels + spread & rolling correlation, Stacked = clearer read, "
-              "Overlay = compare on one panel, Heatmap = correlation & seasonality matrices",
-     )
+    s = _chart_sidebar("oi", "OI Settings", "OI Chart View")
 
-     date_density = st.sidebar.selectbox(
-         "Date Axis Label Format",
-         ["Auto", "1 Year", "2 Years", "Quarterly", "Monthly"],
-         index=1,
-         key="oi_date_density",
-         help="Select the density of the X-axis date labels."
-     )
+    with st.spinner("Fetching Open Interest and MT5 data..."):
+        df_merged, _, _, _, error = load_and_align_data(s.pair, s.cot_name, s.num_bars)
 
-     enable_crosshair_oi = False
-     if oi_display_mode == "Stacked (one under another)":
-         enable_crosshair_oi = st.sidebar.toggle(
-             "Enable vertical crosshair",
-             value=True,
-             key="oi_crosshair",
-             help="Displays a unified vertical line across all 3 stacked charts."
-         )
+        if error:
+            st.error(error)
+        else:
+            st.plotly_chart(_settings_chart(s, df_merged), width="stretch", config=PLOTLY_CONFIG)
 
-     comparison_opts_oi = None
-     if oi_display_mode == "Comparison (Aligned)":
-         comparison_opts_oi = _comparison_controls("oi")
+            st.markdown("### Latest Snapshot")
+            latest = df_merged.iloc[-1]
+            latest_oi = latest["Net_Pct_of_OI"]
+            latest_dxy_oi = latest["Net_Pct_of_OI_dxy"]
 
-     num_bars = st.sidebar.slider(
-         "Number of Weekly Bars",
-         min_value=100,
-         max_value=2000,
-         value=1000,
-         step=100,
-         key="oi_bars"
-     )
-
-     with st.spinner("Fetching Open Interest and MT5 data..."):
-         df_merged, df_cot, df_dxy, df_mt5 = load_and_align_data(selected_pair, selected_cot_name, num_bars)
-
-         if not df_merged.empty and 'Net_Pct_of_OI' in df_merged.columns:
-             fig = _build_chart(oi_display_mode, df_merged, selected_pair, selected_cot_name,
-                                date_density, enable_crosshair_oi, comparison_opts_oi)
-
-             st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
-
-             # Show a quick metric for latest OI
-             st.markdown("### Latest Snapshot")
-             latest_date = df_merged["Date"].iloc[-1].strftime("%Y-%m-%d")
-             latest_oi = df_merged["Net_Pct_of_OI"].iloc[-1]
-             latest_dxy_oi = df_merged["Net_Pct_of_OI_dxy"].iloc[-1]
-             latest_price = df_merged["close"].iloc[-1]
-
-             st.write(f"**Aligned Date:** {latest_date}")
-             col1, col2, col3, col4 = st.columns(4)
-             col1.metric(label=f"Current Price ({selected_pair})", value=f"{latest_price:.5f}")
-             col2.metric(label=f"{selected_cot_name} Net OI", value=f"{latest_oi:.2f}%")
-             col3.metric(label="USD INDEX Net OI", value=f"{latest_dxy_oi:.2f}%")
-             col4.metric(label="Spread (pair − USD)", value=f"{latest_oi - latest_dxy_oi:+.2f} pp")
-
-         else:
-             st.error("Could not fetch Open Interest or MT5 data for the selected assets.")
+            st.write(f"**Aligned Date:** {latest['Date'].strftime('%Y-%m-%d')}")
+            col1, col2, col3, col4 = st.columns(4)
+            col1.metric(label=f"Current Price ({s.pair})", value=f"{latest['close']:.5f}")
+            col2.metric(label=f"{s.cot_name} Net OI", value=f"{latest_oi:.2f}%")
+            col3.metric(label="USD INDEX Net OI", value=f"{latest_dxy_oi:.2f}%")
+            col4.metric(label="Spread (pair − USD)", value=f"{latest_oi - latest_dxy_oi:+.2f} pp")
 
 
 def main():

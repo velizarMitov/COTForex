@@ -133,14 +133,7 @@ def fetch_cftc_data(symbol: str) -> pd.DataFrame:
     short_col = pd.to_numeric(df.get("lev_money_positions_short"), errors="coerce").fillna(0)
     df["Net Position"] = long_col - short_col
 
-    result = df.dropna(subset=["Date", "Net Position"]).sort_values("Date").reset_index(drop=True)
-    
-    # Store other columns just in case
-    for col in ["pct_of_oi_lev_money_long", "pct_of_oi_lev_money_short"]:
-        if col in df.columns:
-            result[col] = df[col]
-            
-    return result
+    return df.dropna(subset=["Date", "Net Position"]).sort_values("Date").reset_index(drop=True)
 
 
 def calculate_open_interest(df: pd.DataFrame) -> pd.DataFrame:
@@ -186,6 +179,8 @@ def calculate_extremes(df: pd.DataFrame, window: int = 52, min_periods: int = 26
     span = roll_max - roll_min
     percentile = ((df["Net Position"] - roll_min) / span.where(span != 0)) * 100
     df["52-Week Percentile"] = percentile.fillna(50)
+    df["52W Min"] = roll_min
+    df["52W Max"] = roll_max
     return df
 
 
@@ -199,6 +194,8 @@ def get_cot_data(currency_name: str) -> pd.DataFrame:
             "Net Position Change",
             "Net Position % Change",
             "52-Week Percentile",
+            "52W Min",
+            "52W Max",
         ]
     )
 
