@@ -16,8 +16,27 @@ from urllib.request import urlopen
 import numpy as np
 import pandas as pd
 
-# Official CFTC Socrata dataset for "TFF - Futures Only".
-_BASE_URL = "https://publicreporting.cftc.gov/resource/gpe5-46if.json"
+_RESOURCE_URL = "https://publicreporting.cftc.gov/resource/{dataset}.json"
+
+# Official CFTC Socrata dataset for "TFF - Futures Only" (Leveraged Funds).
+_TFF_DATASET = "gpe5-46if"
+_TFF_FIELDS = {
+    "lev_money_positions_long": "lev_money_positions_long",
+    "lev_money_positions_short": "lev_money_positions_short",
+    "pct_of_oi_lev_money_long": "pct_of_oi_lev_money_long",
+    "pct_of_oi_lev_money_short": "pct_of_oi_lev_money_short",
+}
+
+# Gold is a commodity, so it lives in "Disaggregated - Futures Only" (Managed Money).
+# Source fields are renamed to the TFF names so everything downstream is shared.
+_DISAGG_DATASET = "72hh-3qpy"
+_GOLD_CONTRACT_CODE = "088691"  # GOLD, COMMODITY EXCHANGE INC.
+_DISAGG_FIELDS = {
+    "m_money_positions_long_all": "lev_money_positions_long",
+    "m_money_positions_short_all": "lev_money_positions_short",
+    "pct_of_oi_m_money_long_all": "pct_of_oi_lev_money_long",
+    "pct_of_oi_m_money_short_all": "pct_of_oi_lev_money_short",
+}
 
 # Canonical market names in CFTC TFF Futures Only data.
 _CURRENCY_MARKETS: Dict[str, str] = {
@@ -57,6 +76,9 @@ _CURRENCY_MARKETS: Dict[str, str] = {
     "USDX": "USD INDEX",
     "U.S. DOLLAR INDEX": "USD INDEX",
     "U.S. DOLLAR INDEX - ICE FUTURES U.S.": "USD INDEX",
+    "GOLD": "GOLD",
+    "XAUUSD": "GOLD",
+    "XAU/USD": "GOLD",
 }
 
 
@@ -76,6 +98,7 @@ def _normalize_currency_name(currency_name: str) -> str:
                 "AUSTRALIAN DOLLAR",
                 "NEW ZEALAND DOLLAR",
                 "USD INDEX",
+                "GOLD",
             }
         )
         raise ValueError(
@@ -85,26 +108,33 @@ def _normalize_currency_name(currency_name: str) -> str:
     return _CURRENCY_MARKETS[key]
 
 
+def _source_for(market_name: str) -> tuple:
+    """(dataset, $where clause, source->canonical field map) for a canonical market."""
+    if market_name == "GOLD":
+        return _DISAGG_DATASET, f"cftc_contract_market_code = '{_GOLD_CONTRACT_CODE}'", _DISAGG_FIELDS
+    return _TFF_DATASET, f"contract_market_name = '{market_name}'", _TFF_FIELDS
+
+
 def _fetch_rows(contract_market_name: str) -> List[dict]:
+    dataset, where, fields = _source_for(contract_market_name)
     params = {
-        "$select": (
-            "report_date_as_yyyy_mm_dd,"
-            "lev_money_positions_long,"
-            "lev_money_positions_short,"
-            "pct_of_oi_lev_money_long,"
-            "pct_of_oi_lev_money_short"
-        ),
-        "$where": f"contract_market_name = '{contract_market_name}'",
+        "$select": ",".join(["report_date_as_yyyy_mm_dd", *fields]),
+        "$where": where,
         "$order": "report_date_as_yyyy_mm_dd asc",
         "$limit": "50000",
     }
-    url = f"{_BASE_URL}?{urlencode(params)}"
+    url = f"{_RESOURCE_URL.format(dataset=dataset)}?{urlencode(params)}"
 
     retries = 3
     for attempt in range(retries):
         try:
             with urlopen(url, timeout=30) as response:
-                return json.loads(response.read().decode("utf-8"))
+                rows = json.loads(response.read().decode("utf-8"))
+            return [
+                {"report_date_as_yyyy_mm_dd": r.get("report_date_as_yyyy_mm_dd"),
+                 **{canon: r.get(src) for src, canon in fields.items()}}
+                for r in rows
+            ]
         except HTTPError as exc:
             # Retry transient upstream/server errors.
             if exc.code in {429, 500, 502, 503, 504} and attempt < retries - 1:

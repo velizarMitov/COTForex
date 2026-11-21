@@ -15,6 +15,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from cftc_api import crowded_masks, expanding_zone
+from symbols import price_decimals
 
 # --------------------------------------------------------------------------
 # Theme
@@ -336,6 +337,7 @@ def build_overlay_chart(
     selected_cot_name: str,
     date_density: str = "Auto",
 ) -> go.Figure:
+    dec = price_decimals(selected_pair)
     fig = make_subplots(specs=[[{"secondary_y": True}]])
 
     fig.add_trace(
@@ -345,7 +347,7 @@ def build_overlay_chart(
             mode="lines",
             name="MT5 Price",
             line=dict(color=GOLD, width=2.2),
-            hovertemplate="MT5 Price=%{y:.5f}<extra></extra>",
+            hovertemplate=f"MT5 Price=%{{y:.{dec}f}}<extra></extra>",
         ),
         secondary_y=False,
     )
@@ -409,6 +411,7 @@ def build_stacked_chart(
     selected_cot_name: str,
     date_density: str = "Auto",
 ) -> go.Figure:
+    dec = price_decimals(selected_pair)
     fig = make_subplots(
         rows=3,
         cols=1,
@@ -429,7 +432,7 @@ def build_stacked_chart(
             mode="lines",
             name="MT5 Price",
             line=dict(color=GOLD, width=2.0),
-            hovertemplate="MT5 Price=%{y:.5f}<extra></extra>",
+            hovertemplate=f"MT5 Price=%{{y:.{dec}f}}<extra></extra>",
         ),
         row=1,
         col=1,
@@ -484,6 +487,7 @@ def build_comparison_chart(
     """
     df = df_merged.copy().reset_index(drop=True)
     dates = df["Date"]
+    dec = price_decimals(selected_pair)
 
     pair_oi = df["Net_Pct_of_OI"].to_numpy(dtype=float)
     dxy_raw = df["Net_Pct_of_OI_dxy"].to_numpy(dtype=float)
@@ -521,7 +525,7 @@ def build_comparison_chart(
             mode="lines",
             name="Price",
             line=dict(color=GOLD, width=2.0),
-            hovertemplate="Price=%{y:.5f}<extra></extra>",
+            hovertemplate=f"Price=%{{y:.{dec}f}}<extra></extra>",
         ),
         row=1,
         col=1,
@@ -534,7 +538,7 @@ def build_comparison_chart(
                 mode="lines",
                 name=f"MA{ma_window}",
                 line=dict(color="rgba(230,237,243,0.45)", width=1.2, dash="dot"),
-                hovertemplate=f"MA{ma_window}=%{{y:.5f}}<extra></extra>",
+                hovertemplate=f"MA{ma_window}=%{{y:.{dec}f}}<extra></extra>",
             ),
             row=1,
             col=1,
@@ -673,6 +677,7 @@ def build_comparison_chart(
 def build_heatmap_chart(
     df_merged: pd.DataFrame, selected_pair: str, selected_cot_name: str
 ) -> go.Figure:
+    dec = price_decimals(selected_pair)
     df = df_merged.copy()
     df["Year"] = df["Date"].dt.year
     df["Month"] = df["Date"].dt.month_name().str[:3]
@@ -741,7 +746,7 @@ def build_heatmap_chart(
     # 3. Price seasonality
     pivot_price = df.pivot_table(values="close", index="Year", columns="Month", aggfunc="mean")
     pivot_price = pivot_price.reindex(columns=[m for m in months_order if m in pivot_price.columns])
-    text_price = np.where(pd.notna(pivot_price.values), np.round(pivot_price.values, 4).astype(str), "")
+    text_price = np.where(pd.notna(pivot_price.values), np.round(pivot_price.values, dec).astype(str), "")
 
     fig.add_trace(
         go.Heatmap(
@@ -751,7 +756,7 @@ def build_heatmap_chart(
             colorscale="Cividis",
             text=text_price,
             texttemplate="%{text}",
-            hovertemplate="Year: %{y}<br>Month: %{x}<br>Avg Price: %{z:.5f}<extra></extra>",
+            hovertemplate=f"Year: %{{y}}<br>Month: %{{x}}<br>Avg Price: %{{z:.{dec}f}}<extra></extra>",
             showscale=True,
             colorbar=dict(title="Price", x=1.02, len=0.28, y=0.14,
                           thickness=12, tickfont=dict(size=10)),

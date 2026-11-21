@@ -19,6 +19,7 @@ By aligning these sets of data onto securely synced, dynamic timeline charts, th
 * **Crowded positioning, defined once:** a week is "crowded" only when positioning is both **stretched versus the last year** (52-week percentile at or beyond the sidebar threshold) **and rare versus history** (Net % of OI beyond the P10/P90 of the data known at that week, so there is no look-ahead). Markers, the dashed zone lines, the Main page alerts and the Extremes warnings all use this rule. Expect roughly 10-15 markers per market over 20 years, and nothing before mid-2009 (the zones need 156 weeks of history).
 * **USD-aware markers:** for USD-base pairs (`USDJPY`, `USDCHF`, `USDCAD`) the crowded-positioning markers point the way the *pair* is expected to move. Prices themselves are not inverted.
 * **Caching:** CFTC data is cached for 6 hours and MT5 prices for 15 minutes, so changing chart options does not refetch. To force a refresh, choose **Clear cache** in Streamlit's top-right menu (or press `C`).
+* **Gold (XAUUSD):** gold positioning comes from the CFTC *Disaggregated Futures Only* report (COMEX gold, **Managed Money**), while currencies use the *TFF* report (**Leveraged Funds**). The two categories are different populations, so gold's levels are not directly comparable with the currencies; the percentile, zones and crowded signal are relative to each market's own history. The MT5 symbol is detected automatically (`XAUUSD`, `GOLD`, suffixed names), so it works whatever your broker calls it.
 * **Zero Maintenance Mapping:** Uses smart mappings (`EURO FX` -> `EURUSD`) to abstract away complex labeling.
 
 ---
@@ -59,7 +60,7 @@ python -m streamlit run app.py
 ```
 
 A tab will automatically open in your default browser at `http://localhost:8501`. 
-* Use the **Sidebar** to toggle between Major Forex Pairs (EURUSD, GBPUSD, USDJPY, USDCAD, USDCHF, AUDUSD, NZDUSD).
+* Use the **Sidebar** to toggle between Major Forex Pairs (EURUSD, GBPUSD, USDJPY, USDCAD, USDCHF, AUDUSD, NZDUSD) or Gold (XAUUSD).
 * Adjust the slider to query more/fewer historical bars.
 * Use Plotly's built-in toolbar to hover, zoom, or pan seamlessly across the MT5 price and the two CFTC subplots.
 
@@ -106,7 +107,7 @@ By consolidating these specific features, we construct a multi-dimensional datas
 * `ui_components.py` — Momentum metric tiles and sentiment-extreme panels.
 * `cftc_api.py` — CFTC Socrata client and positioning metrics (Net % of OI, weekly change, 52-week percentile).
 * `mt5_api.py` — MetaTrader 5 weekly price fetching.
-* `symbols.py` — CFTC market ↔ MT5 symbol mapping.
+* `symbols.py` — CFTC market ↔ MT5 symbol mapping and price precision per instrument.
 * `main.py` — Command-line chart preview.
 * `run_app.bat` — Single launcher (environment, dependency and MT5 checks, then starts the app).
 * `tests/` — Offline `pytest` suite.

@@ -14,6 +14,26 @@ def shutdown_mt5():
     """Shut down the MetaTrader 5 connection."""
     mt5.shutdown()
 
+# Brokers name some instruments differently; the first alias that exists wins.
+SYMBOL_ALIASES = {
+    "XAUUSD": ["XAUUSD", "GOLD", "XAUUSD.m", "XAUUSD.", "GOLD.", "XAUUSD#"],
+}
+
+
+def resolve_symbol(symbol: str):
+    """The broker's name for ``symbol``, or None when the terminal has no match."""
+    for candidate in SYMBOL_ALIASES.get(symbol.upper(), [symbol]):
+        if mt5.symbol_info(candidate) is not None:
+            return candidate
+
+    # Last resort for suffixed names (e.g. "XAUUSD_i"); only exact-prefix matches count.
+    if symbol.upper() in SYMBOL_ALIASES:
+        for info in mt5.symbols_get(f"*{symbol.upper()}*") or []:
+            if info.name.upper().startswith(symbol.upper()):
+                return info.name
+    return None
+
+
 def fetch_forex_data(symbol: str, timeframe: str = "W1", num_bars: int = 1000) -> pd.DataFrame:
     """Fetch historical OHLC data from MetaTrader 5 and isolate the 'close' price.
 
@@ -43,6 +63,12 @@ def fetch_forex_data(symbol: str, timeframe: str = "W1", num_bars: int = 1000) -
     }
 
     tf_value = tf_map.get(timeframe.upper().strip(), mt5.TIMEFRAME_W1)
+
+    broker_symbol = resolve_symbol(symbol)
+    if broker_symbol is None:
+        print(f"Symbol '{symbol}' not found on the active MT5 server.")
+        return pd.DataFrame()
+    symbol = broker_symbol
 
     # Ensure the symbol is active in "Market Watch" before fetching
     if not mt5.symbol_select(symbol, True):

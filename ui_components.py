@@ -1,6 +1,7 @@
 import streamlit as st
 
 from cftc_api import crowded_verdict
+from symbols import price_decimals
 
 def render_momentum_metrics(df_mt5, df_cot, df_dxy, selected_pair, selected_cot_name):
     """Renders the top-level momentum metrics for price and commitments."""
@@ -11,7 +12,8 @@ def render_momentum_metrics(df_mt5, df_cot, df_dxy, selected_pair, selected_cot_
         current_price, prev_price = df_mt5['close'].iloc[-1], df_mt5['close'].iloc[-2]
         price_change = current_price - prev_price
         price_pct = (price_change / prev_price) * 100 if prev_price != 0 else 0
-        col1.metric(label=f"{selected_pair} Weekly Close", value=f"{current_price:.5f}", delta=f"{price_change:+.5f} ({price_pct:+.2f}%)")
+        dec = price_decimals(selected_pair)
+        col1.metric(label=f"{selected_pair} Weekly Close", value=f"{current_price:.{dec}f}", delta=f"{price_change:+.{dec}f} ({price_pct:+.2f}%)")
 
     if not df_cot.empty:
         col2.metric(

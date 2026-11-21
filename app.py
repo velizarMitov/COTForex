@@ -3,7 +3,7 @@ from typing import NamedTuple, Optional
 import streamlit as st
 import pandas as pd
 
-from symbols import MT5_TO_COT
+from symbols import MT5_TO_COT, price_decimals
 from data_processor import load_and_align_data, get_comparison_data
 from charts import (
     build_overlay_chart,
@@ -133,6 +133,11 @@ def _chart_sidebar(key_prefix: str, header: str, view_label: str) -> ChartSettin
     st.sidebar.header(header)
 
     pair = st.sidebar.selectbox("Select Currency Pair", mt5_options, key=f"{key_prefix}_pair")
+    if pair == "XAUUSD":
+        st.sidebar.caption(
+            "Gold uses CFTC **Managed Money** (Disaggregated report); currencies use "
+            "**Leveraged Funds** (TFF). Levels are not directly comparable."
+        )
     mode = st.sidebar.radio(
         view_label,
         CHART_VIEWS,
@@ -269,7 +274,7 @@ def render_open_interest_analysis():
 
             st.write(f"**Aligned Date:** {latest['Date'].strftime('%Y-%m-%d')}")
             col1, col2, col3, col4 = st.columns(4)
-            col1.metric(label=f"Current Price ({s.pair})", value=f"{latest['close']:.5f}")
+            col1.metric(label=f"Current Price ({s.pair})", value=f"{latest['close']:.{price_decimals(s.pair)}f}")
             col2.metric(label=f"{s.cot_name} Net OI", value=f"{latest_oi:.2f}%")
             col3.metric(label="USD INDEX Net OI", value=f"{latest_dxy_oi:.2f}%")
             col4.metric(label="Spread (pair − USD)", value=f"{latest_oi - latest_dxy_oi:+.2f} pp")
